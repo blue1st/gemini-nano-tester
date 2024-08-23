@@ -19,7 +19,7 @@
         </p>
       </div>
     </div>
-!    <div>
+    <div>
       <h2>Step. 3: モデルのダウンロード</h2>
       <div>
         <a href="chrome://components">chrome://components</a>
@@ -31,7 +31,6 @@
          <p>項目が表示されない場合はPCの空き容量が22GB以上あるかを確認する。</p>
       </div>
     </div>
-!
   </div>
 </template>
 <script setup lang="ts">
