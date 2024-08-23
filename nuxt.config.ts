@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
   devtools: { enabled: true },
-  app {
+  app: {
     baseURL: '/gemini-nano-tester/'
   }
 })
