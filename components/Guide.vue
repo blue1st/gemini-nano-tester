@@ -1,5 +1,6 @@
 <template>
   <div>
+    <h1>Gemini Nano使用前の準備</h1>
     <div>
       <h2>Step. 1: Google Chromeのバージョン確認</h2>
       <div>
@@ -35,6 +36,7 @@
          <p>＊ PCの空き容量が22GB以上ないと上記は表示されないようです。</p>
       </div>
     </div>
+    <p>以上の手順が完了したら画面をリロードしてみてください。</p>
   </div>
 </template>
 <script setup lang="ts">
