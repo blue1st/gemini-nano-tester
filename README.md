@@ -4,6 +4,8 @@ Google Chrome (v148以上) に内蔵されたオンデバイスAI機能 **Built-
 
 Vite + Tailwind CSS v4 でビルドされ、推論ログ可視化機能（Thinking Mode）などを実装しています。
 
+👉 **[デモページはこちら（GitHub Pages）](https://blue1st.github.io/gemini-nano-tester/)**
+
 ---
 
 
