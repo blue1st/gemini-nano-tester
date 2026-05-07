@@ -822,6 +822,10 @@ function setupEventListeners() {
   });
 
   // Action Buttons on Overlay
+  // (Moved to setupStartupEventListeners to be registered immediately on load)
+}
+
+function setupStartupEventListeners() {
   btnRecheckApi.addEventListener('click', checkSystemRequirements);
   btnStartDownload.addEventListener('click', triggerModelDownload);
   
@@ -830,10 +834,11 @@ function setupEventListeners() {
       hideStartupOverlay();
       initializeChatSystem();
       modelBadge.textContent = 'Sandbox (Bypassed)';
-      modelBadge.parentElement.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium border border-amber-500/20 bg-amber-500/5 text-amber-300";
+      modelBadge.parentElement.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium border border-amber-500/20 bg-emerald-500/5 text-amber-300";
     });
   }
 }
 
 // Kickstart startup checks
+setupStartupEventListeners();
 checkSystemRequirements();
