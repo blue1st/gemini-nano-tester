@@ -1,0 +1,24 @@
+{
+  "short_name": "Aether AI",
+  "name": "Aether AI - Chrome Prompt API Chat",
+  "description": "Chrome 148のPrompt API (window.ai) を活用した、完全にローカルで動作する高速でモダンなPWAチャットクライアントです。",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#08090d",
+  "theme_color": "#08090d",
+  "display": "standalone",
+  "orientation": "any"
+}

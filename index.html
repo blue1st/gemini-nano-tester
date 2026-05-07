@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ja" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0b0c10" />
+    
+    <!-- SEO Meta Tags -->
+    <title>Aether AI - Chrome Prompt API Local Chat Client</title>
+    <meta name="description" content="Chrome 148のPrompt API (window.ai) を活用した、完全にローカルで動作する高速でモダンなPWAチャットクライアントです。" />
+    
+    <!-- PWA Requirements -->
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" href="./icon-192.png" />
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body class="bg-[#08090d] text-[#e2e8f0] font-sans antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-hidden">
+    
+    <!-- Animated background grid -->
+    <div class="fixed inset-0 bg-grid pointer-events-none opacity-40 z-0"></div>
+    <div class="fixed inset-0 bg-gradient-to-tr from-violet-950/20 via-black to-cyan-950/20 pointer-events-none z-0"></div>
+
+    <!-- Main Container -->
+    <div id="app" class="relative z-10 flex flex-col h-screen overflow-hidden">
+      
+      <!-- Top Premium Navbar -->
+      <header class="flex items-center justify-between px-6 py-4 border-b border-white/5 glass-panel z-20">
+        <div class="flex items-center space-x-3">
+          <div class="relative w-10 h-10 flex items-center justify-center rounded-xl overflow-hidden shadow-lg border border-violet-500/20">
+            <img src="./icon-192.png" alt="Aether AI" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-violet-600/20 to-transparent"></div>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold font-outfit tracking-wider bg-gradient-to-r from-violet-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent">
+              AETHER AI
+            </h1>
+            <p class="text-[10px] text-slate-400 tracking-widest uppercase">Local Gemini Nano Client</p>
+          </div>
+        </div>
+        
+        <!-- Status Indicator / Token Counter Badge -->
+        <div class="flex items-center space-x-4">
+          <!-- Offline Indicator -->
+          <div id="offline-badge" class="hidden items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium border border-amber-500/20 bg-amber-500/10 text-amber-300">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>オフラインモード</span>
+          </div>
+
+          <!-- Active Model Status -->
+          <div class="flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium border border-violet-500/20 bg-violet-500/5 text-violet-300">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="model-badge">Gemini Nano (Ready)</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- App Loading & Error / Download State Overlay -->
+      <div id="startup-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-[#090a0f]/95 backdrop-blur-md px-4">
+        <div class="max-w-md w-full glass-panel border border-white/10 rounded-2xl p-8 shadow-2xl text-center">
+          
+          <!-- Version Alert Box (shown if Chrome version is under 148) -->
+          <div id="version-warning" class="hidden flex items-start space-x-2.5 text-left p-3.5 mb-6 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300 text-xs">
+            <span class="text-base shrink-0">⚠️</span>
+            <div>
+              <strong class="font-bold text-white">Chromeバージョン不足が検知されました</strong>
+              <p class="mt-1 leading-relaxed text-slate-300">
+                お使いのChromeバージョンは <span id="current-version" class="font-bold text-rose-300 font-mono">---</span> です。Prompt API を正常に動作させるには <strong class="text-rose-300 font-semibold">Chrome 148 以上</strong> が必須となります。ブラウザのアップデートをご確認ください。
+              </p>
+            </div>
+          </div>
+
+          <!-- Loading State Spinner -->
+          <div id="startup-loading" class="flex flex-col items-center py-8">
+            <div class="relative w-20 h-20 mb-6">
+              <div class="absolute inset-0 border-4 border-violet-500/10 rounded-full"></div>
+              <div class="absolute inset-0 border-4 border-t-violet-500 border-r-cyan-400 rounded-full animate-spin"></div>
+            </div>
+            <h2 class="text-xl font-bold font-outfit mb-2">システム状態を確認中...</h2>
+            <p class="text-slate-400 text-sm">Chrome Prompt API (window.ai) の稼働状態を確認しています。</p>
+          </div>
+
+          <!-- API Missing Error State -->
+          <div id="startup-error-api" class="hidden flex flex-col items-center text-left py-4">
+            <div class="w-16 h-16 bg-red-500/10 border border-red-500/30 text-red-400 rounded-2xl flex items-center justify-center mb-6 text-2xl shadow-lg shadow-red-500/5 animate-pulse-cyan">
+              ⚠️
+            </div>
+            <h2 class="text-xl font-bold font-outfit text-center w-full mb-4 text-red-400">Prompt API が無効です</h2>
+            <p class="text-sm text-slate-300 leading-relaxed mb-6">
+              このブラウザでは Chrome Built-in AI (Prompt API) が有効化されていないか、サポートされていません。以下の手順を実行してください。
+            </p>
+            
+            <div class="space-y-4 text-xs text-slate-300 bg-black/40 border border-white/5 rounded-xl p-4 w-full font-mono mb-6">
+              <div class="flex items-start">
+                <span class="bg-violet-500/20 text-violet-300 w-5 h-5 rounded-full flex items-center justify-center font-bold mr-2 shrink-0">1</span>
+                <div>
+                  <p class="font-bold text-white mb-1">フラグの設定（コピーしてURLバーに貼付）</p>
+                  <p class="text-slate-400 mb-2 select-all">chrome://flags/#prompt-api-for-gemini-nano</p>
+                  <p class="text-slate-500">→ <span class="text-indigo-300">Enabled</span> または <span class="text-indigo-300">Enabled with bypass</span> に変更</p>
+                </div>
+              </div>
+              <div class="flex items-start">
+                <span class="bg-violet-500/20 text-violet-300 w-5 h-5 rounded-full flex items-center justify-center font-bold mr-2 shrink-0">2</span>
+                <div>
+                  <p class="font-bold text-white mb-1">デバイスモデルの設定</p>
+                  <p class="text-slate-400 mb-2 select-all">chrome://flags/#optimization-guide-on-device-model</p>
+                  <p class="text-slate-500">→ <span class="text-indigo-300">Enabled BypassPerfRequirement</span> または <span class="text-indigo-300">Enabled</span> に変更</p>
+                </div>
+              </div>
+              <div class="flex items-start">
+                <span class="bg-violet-500/20 text-violet-300 w-5 h-5 rounded-full flex items-center justify-center font-bold mr-2 shrink-0">3</span>
+                <div>
+                  <p class="font-bold text-white mb-1">ブラウザを再起動</p>
+                  <p class="text-slate-500">設定変更後、Chromeを完全に再起動します。</p>
+                </div>
+              </div>
+            </div>
+
+            <button id="btn-recheck-api" class="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 active:scale-95 text-white text-sm font-bold rounded-xl transition duration-200 shadow-lg shadow-violet-500/20">
+              再チェック
+            </button>
+            
+            <button id="btn-bypass-and-chat" class="w-full mt-2.5 py-2.5 bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white text-xs font-semibold rounded-xl transition duration-200 border border-white/5">
+              強制的にチャット画面へ進む（開発用）
+            </button>
+
+            <!-- Troubleshooting checklist inside the overlay -->
+            <div class="mt-6 border-t border-white/5 pt-4 text-left w-full">
+              <h4 class="text-xs font-bold text-slate-300 mb-2.5 flex items-center space-x-1.5 select-none">
+                <span>🔍</span>
+                <span>フラグを設定しても起動しない場合のチェックリスト</span>
+              </h4>
+              <ul class="text-[11px] text-slate-400 space-y-3 leading-relaxed">
+                <li class="flex items-start">
+                  <span class="text-violet-400 mr-2 font-bold shrink-0">■</span>
+                  <div>
+                    <strong class="text-slate-200">Mac の SSD 空き容量（22GB 以上必要）:</strong>
+                    <p class="text-slate-400 mt-0.5">オンデバイスAIは、ストレージ容量が少ないとChromeがダウンロードを静かに制限し、APIを無効化（`undefined`）します。不要なファイルを整理して容量を確保してください。</p>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <span class="text-violet-400 mr-2 font-bold shrink-0">■</span>
+                  <div>
+                    <strong class="text-slate-200">chrome://on-device-internals でのDL状態確認:</strong>
+                    <p class="text-slate-400 mt-0.5">新しいタブで <span class="text-indigo-300 select-all font-mono bg-white/5 px-1 py-0.5 rounded">chrome://on-device-internals</span> を開き、<strong class="text-slate-300">「Model Status」</strong> タブを確認してください。モデルのロード進捗やDL完了状況、発生しているエラーなどのリアルタイム診断が行えます。</p>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <span class="text-violet-400 mr-2 font-bold shrink-0">■</span>
+                  <div>
+                    <strong class="text-slate-200">Mac上での Chrome の完全終了（Cmd + Q）:</strong>
+                    <p class="text-slate-400 mt-0.5">「Relaunch」ボタンだけでは裏プロセスが残ることがあります。<kbd class="px-1 py-0.5 bg-slate-800 text-slate-200 rounded text-[9px] font-mono shadow-sm">Cmd + Q</kbd> でChromeを完全に終了させてから再起動してください。</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Model Download Prompt State -->
+          <div id="startup-download-prompt" class="hidden flex flex-col items-center py-4">
+            <div class="w-16 h-16 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-2xl flex items-center justify-center mb-6 text-2xl shadow-lg shadow-cyan-500/5">
+              📥
+            </div>
+            <h2 class="text-xl font-bold font-outfit mb-3">Gemini Nano のダウンロード</h2>
+            <p class="text-sm text-slate-300 leading-relaxed mb-6">
+              Prompt API は検出されましたが、ローカルに動作モデル（Gemini Nano）がダウンロードされていません。完全にオフラインで動作させるには、約3GBのモデルのダウンロードが必要です。
+            </p>
+            
+            <button id="btn-start-download" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 active:scale-95 text-white text-sm font-bold rounded-xl transition duration-200 shadow-lg shadow-cyan-500/20">
+              モデルのダウンロードを開始
+            </button>
+          </div>
+
+          <!-- Model Downloading Progress State -->
+          <div id="startup-downloading" class="hidden flex flex-col items-center py-4">
+            <div class="relative w-16 h-16 mb-6 flex items-center justify-center">
+              <span class="w-12 h-12 bg-cyan-500/10 border border-cyan-500/30 rounded-full animate-ping absolute"></span>
+              <span class="text-cyan-400 text-xl font-bold relative">⬇️</span>
+            </div>
+            <h2 class="text-xl font-bold font-outfit mb-2">モデルをダウンロード中...</h2>
+            <p class="text-sm text-slate-400 mb-6">ブラウザがGemini Nanoモデルをローカルストレージに構築しています。これには数分かかる場合があります。</p>
+            
+            <!-- Beautiful Progress Bar -->
+            <div class="w-full bg-slate-800 rounded-full h-2.5 mb-2 overflow-hidden border border-white/5">
+              <div id="download-progress-bar" class="bg-gradient-to-r from-cyan-400 to-violet-500 h-full w-[0%] transition-all duration-300 ease-out"></div>
+            </div>
+            <div class="flex justify-between w-full text-xs font-mono text-slate-400 mb-6">
+              <span id="download-percentage">0%</span>
+              <span id="download-bytes">0 MB / 0 MB</span>
+            </div>
+            
+            <p class="text-[10px] text-slate-500 max-w-xs text-center leading-normal">
+              ※ダウンロード中に他のタブに切り替えたりブラウザを閉じたりしないでください。進行状況は <span class="font-bold text-slate-400 select-all">chrome://components</span> でも確認できます。
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Main Application Shell (Split screen for desktop / Single container for chat) -->
+      <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar: Conversation History & System Controls -->
+        <aside id="sidebar" class="hidden md:flex flex-col w-80 border-r border-white/5 glass-panel z-10">
+          <!-- Title & New Chat Action -->
+          <div class="p-4 border-b border-white/5">
+            <button id="btn-new-chat" class="w-full py-3 px-4 flex items-center justify-center space-x-2 bg-white/5 hover:bg-white/10 active:scale-95 text-white text-sm font-semibold border border-white/10 rounded-xl transition duration-150">
+              <span class="text-lg">＋</span>
+              <span>新しいスレッド</span>
+            </button>
+          </div>
+
+          <!-- History Thread List -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-2">
+            <div class="text-[10px] text-slate-500 tracking-wider font-bold uppercase mb-3">スレッド履歴</div>
+            <div id="history-container" class="space-y-1">
+              <!-- Dynamically populated from JS -->
+              <p class="text-xs text-slate-500 text-center py-8">履歴はありません</p>
+            </div>
+          </div>
+
+          <!-- System Controls in Sidebar Footer -->
+          <div class="p-4 border-t border-white/5 space-y-4 bg-slate-950/40">
+            <!-- Sidebar Header Title -->
+            <div class="text-[10px] text-slate-500 tracking-wider font-bold uppercase mb-1">ローカルパラメータ</div>
+
+            <!-- System Prompt Field -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs text-slate-400">
+                <span>システムプロンプト</span>
+              </div>
+              <textarea id="param-system-prompt" rows="3" class="w-full text-[11px] text-slate-200 bg-slate-900 border border-white/5 focus:border-violet-500/50 rounded-lg p-2 focus:outline-none resize-none leading-normal transition" placeholder="AIの役割を設定します...">You are Aether, an extremely powerful local AI assistant. Answer the user's questions clearly, concisely, and accurately in Japanese.</textarea>
+            </div>
+            
+            <!-- Temperature Slider -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs text-slate-400">
+                <span>Temperature（創造性）</span>
+                <span id="temp-value" class="font-mono text-violet-400 font-bold">0.7</span>
+              </div>
+              <input type="range" id="param-temp" min="0.1" max="1.0" step="0.05" value="0.7" class="w-full accent-violet-500 bg-slate-800 rounded-lg appearance-none h-1.5 cursor-pointer" />
+            </div>
+
+            <!-- TopK Slider -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs text-slate-400">
+                <span>Top K（多様性）</span>
+                <span id="topk-value" class="font-mono text-cyan-400 font-bold">3</span>
+              </div>
+              <input type="range" id="param-topk" min="1" max="10" step="1" value="3" class="w-full accent-cyan-500 bg-slate-800 rounded-lg appearance-none h-1.5 cursor-pointer" />
+            </div>
+
+            <!-- Reset Database -->
+            <button id="btn-clear-all" class="w-full py-2 px-3 text-left text-xs flex items-center justify-between text-rose-400 hover:bg-rose-500/10 active:scale-95 border border-transparent hover:border-rose-500/20 rounded-lg transition">
+              <span>全データを削除</span>
+              <span class="text-sm">🗑️</span>
+            </button>
+          </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <section class="flex-1 flex flex-col h-full overflow-hidden relative">
+          
+          <!-- Speedometer Ribbon overlay -->
+          <div id="speed-meter" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-20 items-center space-x-2 bg-violet-950/85 backdrop-blur border border-violet-500/40 text-violet-200 text-xs font-mono py-1.5 px-4 rounded-full shadow-lg shadow-indigo-500/10">
+            <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-ping"></span>
+            <span>推論速度: <span id="speed-value" class="font-bold text-cyan-300">0.0</span> tokens/sec</span>
+            <span class="text-slate-500">|</span>
+            <span>生成文字: <span id="speed-char-count" class="font-bold text-violet-300">0</span>文字</span>
+          </div>
+
+          <!-- Chat Messages Container -->
+          <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Initial Welcome Container -->
+            <div id="welcome-message" class="max-w-2xl mx-auto flex flex-col items-center justify-center h-full text-center py-12 space-y-6 select-none">
+              <div class="relative w-24 h-24 mb-2 animate-pulse-glow rounded-3xl flex items-center justify-center bg-violet-600/10 border border-violet-500/30">
+                <img src="./icon-512.png" alt="Aether" class="w-20 h-20 rounded-2xl" />
+              </div>
+              <div class="space-y-2">
+                <h2 class="text-3xl font-extrabold font-outfit tracking-tight bg-gradient-to-r from-violet-200 via-indigo-100 to-cyan-200 bg-clip-text text-transparent">
+                  Aether Local Assistant
+                </h2>
+                <p class="text-sm text-slate-400 max-w-md mx-auto">
+                  Chrome の Gemini Nano を使った、100% オフラインで動作する超高速・安全なプライベート AI チャットです。
+                </p>
+              </div>
+
+              <!-- Quick action prompts grid -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-xl text-left mt-8">
+                <button class="quick-prompt-btn text-xs glass-card hover:bg-violet-500/5 hover:border-violet-500/30 p-3.5 rounded-xl transition duration-200 flex flex-col space-y-1 active:scale-95 text-left">
+                  <span class="font-semibold text-slate-200">💡 アイデアのブレスト</span>
+                  <span class="text-slate-400 font-light leading-relaxed">「ローカルAIを活かした面白いWebアプリのアイデアを5つ提案して」</span>
+                </button>
+                <button class="quick-prompt-btn text-xs glass-card hover:bg-violet-500/5 hover:border-violet-500/30 p-3.5 rounded-xl transition duration-200 flex flex-col space-y-1 active:scale-95 text-left">
+                  <span class="font-semibold text-slate-200">📝 コードの最適化</span>
+                  <span class="text-slate-400 font-light leading-relaxed">「JavaScriptのService Workerでキャッシュを効率よく更新するコツは？」</span>
+                </button>
+                <button class="quick-prompt-btn text-xs glass-card hover:bg-cyan-500/5 hover:border-cyan-500/30 p-3.5 rounded-xl transition duration-200 flex flex-col space-y-1 active:scale-95 text-left">
+                  <span class="font-semibold text-slate-200">🔍 数学パズル</span>
+                  <span class="text-slate-400 font-light leading-relaxed">「100枚のコインのうち1枚だけ重い。天秤を最小回数で使う解法を考えて」</span>
+                </button>
+                <button class="quick-prompt-btn text-xs glass-card hover:bg-cyan-500/5 hover:border-cyan-500/30 p-3.5 rounded-xl transition duration-200 flex flex-col space-y-1 active:scale-95 text-left">
+                  <span class="font-semibold text-slate-200">📖 物語の創作</span>
+                  <span class="text-slate-400 font-light leading-relaxed">「時間旅行者が1秒過去に戻るタイムマシンを作ったショートストーリーを書いて」</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Prompt Entry Section -->
+          <div class="px-6 py-4 border-t border-white/5 glass-panel z-15">
+            <div class="max-w-3xl mx-auto space-y-3">
+              
+              <!-- Quick Toggles Panel -->
+              <div class="flex items-center justify-between text-xs px-2 select-none">
+                
+                <!-- Thinking Mode Toggle -->
+                <div class="flex items-center space-x-3">
+                  <label for="toggle-thinking" class="flex items-center cursor-pointer group">
+                    <div class="relative">
+                      <input type="checkbox" id="toggle-thinking" class="sr-only" checked />
+                      <div class="w-9 h-5 bg-slate-800 rounded-full transition-colors duration-200 border border-white/10 group-hover:border-white/20"></div>
+                      <div class="dot absolute left-1 top-1 bg-slate-400 w-3 h-3 rounded-full transition-all duration-200"></div>
+                    </div>
+                    <div class="ml-2.5 text-slate-400 group-hover:text-slate-200 font-medium transition flex items-center space-x-1">
+                      <span>Thinking Mode</span>
+                      <span class="text-[10px] px-1.5 py-0.25 bg-violet-500/20 text-violet-300 rounded font-semibold tracking-wider font-mono uppercase">CoT</span>
+                    </div>
+                  </label>
+                </div>
+
+                <!-- Model Information Info Button -->
+                <div class="flex items-center space-x-1 text-slate-400 hover:text-slate-200 transition cursor-pointer" id="btn-show-model-info">
+                  <span>ℹ️</span>
+                  <span>Nano仕様</span>
+                </div>
+              </div>
+
+              <!-- Main Input Bar -->
+              <div class="relative flex items-center">
+                <textarea 
+                  id="chat-input" 
+                  rows="1"
+                  placeholder="メッセージを入力してください...（Cmd+Enterで送信）" 
+                  class="w-full pl-4 pr-16 py-3.5 rounded-xl glass-card text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-violet-500/50 focus:border-violet-500/50 resize-none font-sans text-sm max-h-48 leading-relaxed transition"
+                ></textarea>
+                
+                <!-- Send Button -->
+                <button 
+                  id="btn-send" 
+                  class="absolute right-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold rounded-lg shadow-lg shadow-violet-500/10 transition-all duration-150 flex items-center space-x-1"
+                >
+                  <span>送信</span>
+                  <span>⚡</span>
+                </button>
+              </div>
+
+              <div class="text-[10px] text-slate-500 text-center select-none font-light">
+                Aether Local AI はブラウザの Gemini Nano モデルを使用してローカルで推論を行います。データが外部サーバーに送信されることはありません。
+              </div>
+
+            </div>
+          </div>
+
+        </section>
+
+      </main>
+
+    </div>
+
+    <!-- Info Modal Popup -->
+    <div id="info-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div class="max-w-md w-full glass-panel border border-white/10 rounded-2xl p-6 shadow-2xl relative">
+        <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white transition text-lg font-bold">×</button>
+        <h3 class="text-lg font-bold font-outfit text-white mb-4 flex items-center space-x-2">
+          <span>🧠</span>
+          <span>Gemini Nano (Prompt API) の仕様</span>
+        </h3>
+        <div class="space-y-3 text-xs text-slate-300 leading-relaxed font-sans">
+          <p>
+            Chrome built-in Prompt API は、Google Chrome がローカルデバイス上で実行するオンデバイスAI機能です。
+          </p>
+          <ul class="list-disc list-inside space-y-1.5 pl-2 text-slate-400 border-l border-violet-500/30">
+            <li><strong class="text-slate-200">モデル名:</strong> Gemini Nano</li>
+            <li><strong class="text-slate-200">パラメータ数:</strong> 約1.8B / 3.2B (デバイス性能に依存)</li>
+            <li><strong class="text-slate-200">コンテキスト窓:</strong> 通常 4,096 トークン</li>
+            <li><strong class="text-slate-200">動作特性:</strong> 完全に100%ローカル（機密情報の処理、完全オフライン対応）</li>
+          </ul>
+          <p class="text-[11px] text-slate-400 mt-4 leading-normal bg-white/5 p-3 rounded-lg border border-white/5">
+            <strong>Thinking Mode:</strong> 本クライアントのThinking Modeは、Chain-of-Thought (思考プロセス) を擬似的に誘発するプロンプト制御と、出力ストリームのリアルタイムパーシングを組み合わせ、高度な論理推論プロセスと推論速度(Tokens/sec)を可視化するプレミアム機能です。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
